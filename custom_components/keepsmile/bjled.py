@@ -288,14 +288,14 @@ class BJLEDInstance:
 
     @retry_bluetooth_connection_error
     async def turn_on(self):
-        self._state.update(SwitchCommand(on=True))
-        await self._write_state()
+        # Bring the strip back from the blackout state
+        await self.set_effect("None")
         self._is_on = True
-                
+    
     @retry_bluetooth_connection_error
     async def turn_off(self):
-        self._state.update(SwitchCommand(on=False))
-        await self._write_state()
+        # Your controller blacks out on Auto, so use that as "off"
+        await self.set_effect("Auto")
         self._is_on = False
 
     @retry_bluetooth_connection_error
