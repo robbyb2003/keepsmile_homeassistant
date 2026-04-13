@@ -286,21 +286,17 @@ class BJLEDInstance:
         await self._write_state()
         # await self.set_rgb_color(self._rgb_color, value)
 
-    @retry_bluetooth_connection_error
-    async def turn_on(self):
-        await self._ensure_connected()
-        on_packet = bytearray.fromhex("69 96 06 01 01")
-        LOGGER.debug("Sending raw ON packet to %s: %s", self.name, on_packet.hex())
-        await self._transmitter.send(on_packet)
-        self._is_on = True
-    
-    @retry_bluetooth_connection_error
-    async def turn_off(self):
-        await self._ensure_connected()
-        off_packet = bytearray.fromhex("69 96 02 01 00")
-        LOGGER.debug("Sending raw OFF packet to %s: %s", self.name, off_packet.hex())
-        await self._transmitter.send(off_packet)
-        self._is_on = False
+        @retry_bluetooth_connection_error
+        async def turn_on(self):
+            self._state.update(SwitchCommand(on=True))
+            await self._write_state()
+            self._is_on = True
+        
+        @retry_bluetooth_connection_error
+        async def turn_off(self):
+            self._state.update(SwitchCommand(on=False))
+            await self._write_state()
+            self._is_on = False
 
     @retry_bluetooth_connection_error
     async def set_effect(self, effect_name: str):
