@@ -85,6 +85,13 @@ RETRY_BACKOFF_EXCEPTIONS = (BleakDBusError)
 
 WrapFuncType = TypeVar("WrapFuncType", bound=Callable[..., Any])
 
+def _log_compiled_state(self, label: str):
+    try:
+        platform_commands = self._compiler.compile(self._state)
+        LOGGER.warning("%s compiled commands for %s: %s", self.name, label, platform_commands)
+    except Exception:
+        LOGGER.exception("%s failed compiling state for %s", self.name, label)
+
 def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
     async def _async_wrap_retry_bluetooth_connection_error(
         self: "BJLEDInstance", *args: Any, **kwargs: Any
@@ -275,6 +282,7 @@ class BJLEDInstance:
         # RGB packet
         self._state.update(RGBCommand(*rgb))
         self._state.update(BrightnessCommand(brightness))
+        self._log_compiled_state("set_rgb_color")
         await self._write_state()
 
 
@@ -288,29 +296,16 @@ class BJLEDInstance:
 
     @retry_bluetooth_connection_error
     async def turn_off(self):
-        await self._ensure_connected()
-    
-        # remember last usable brightness
-        self._last_brightness = self._brightness if self._brightness is not None else 254
-    
-        self._brightness = 0
-        self._state.update(BrightnessCommand(0))
+        self._state.update(SwitchCommand(on=False))
+        self._log_compiled_state("turn_off")
         await self._write_state()
-    
         self._is_on = False
     
     @retry_bluetooth_connection_error
     async def turn_on(self):
-        await self._ensure_connected()
-    
-        brightness = getattr(self, "_last_brightness", 254)
-        if brightness <= 0:
-            brightness = 254
-    
-        self._brightness = brightness
-        self._state.update(BrightnessCommand(brightness))
+        self._state.update(SwitchCommand(on=True))
+        self._log_compiled_state("turn_on")
         await self._write_state()
-    
         self._is_on = True
 
     @retry_bluetooth_connection_error
@@ -379,7 +374,7 @@ class BJLEDInstance:
                 try:
                     services = await client.get_services()
                     LOGGER.debug(f"Tried reloading characteristrics: {services.characteristics}")
-                    transmitter = self._model.get_transmitter(self._client)
+                    transmitter = self._model.get_transmitter(client)
 
                 except ConnectionError:
                     LOGGER.debug("Connection failed (x2): failed to wrap client with transmitter", exc_info=True)
