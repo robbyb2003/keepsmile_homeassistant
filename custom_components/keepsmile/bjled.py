@@ -290,30 +290,25 @@ class BJLEDInstance:
     async def turn_off(self):
         await self._ensure_connected()
     
-        # Save current visible color so turn_on can restore it
-        if self._rgb_color is not None:
-            self._last_rgb_color = self._rgb_color
-        else:
-            self._last_rgb_color = (255, 255, 255)
+        # remember last usable brightness
+        self._last_brightness = self._brightness if self._brightness is not None else 254
     
-        self._rgb_color = (0, 0, 0)
-        self._state.update(RGBCommand(0, 0, 0))
-        self._state.update(BrightnessCommand(self._brightness if self._brightness is not None else 254))
+        self._brightness = 0
+        self._state.update(BrightnessCommand(0))
         await self._write_state()
     
         self._is_on = False
-                
+    
     @retry_bluetooth_connection_error
     async def turn_on(self):
         await self._ensure_connected()
     
-        rgb = getattr(self, "_last_rgb_color", None)
-        if rgb is None or rgb == (0, 0, 0):
-            rgb = (255, 255, 255)
+        brightness = getattr(self, "_last_brightness", 254)
+        if brightness <= 0:
+            brightness = 254
     
-        self._rgb_color = rgb
-        self._state.update(RGBCommand(*rgb))
-        self._state.update(BrightnessCommand(self._brightness if self._brightness is not None else 254))
+        self._brightness = brightness
+        self._state.update(BrightnessCommand(brightness))
         await self._write_state()
     
         self._is_on = True
