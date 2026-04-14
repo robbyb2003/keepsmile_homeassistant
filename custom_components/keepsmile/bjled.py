@@ -374,7 +374,7 @@ class BJLEDInstance:
                 try:
                     services = await client.get_services()
                     LOGGER.debug(f"Tried reloading characteristrics: {services.characteristics}")
-                    transmitter = self._model.get_transmitter(client)
+                    transmitter = self._model.get_transmitter(self._client)
 
                 except ConnectionError:
                     LOGGER.debug("Connection failed (x2): failed to wrap client with transmitter", exc_info=True)
